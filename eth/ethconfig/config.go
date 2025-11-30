@@ -18,12 +18,14 @@
 package ethconfig
 
 import (
-	"errors"
+	"os"
+	"os/user"
+	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/consensus/beacon"
 	"github.com/ethereum/go-ethereum/consensus/clique"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
@@ -49,8 +51,17 @@ var FullNodeGPO = gasprice.Config{
 
 // Defaults contains default settings for use on the Ethereum main net.
 var Defaults = Config{
-	HistoryMode:          history.KeepAll,
-	SyncMode:             SnapSync,
+	HistoryMode: history.KeepAll,
+	SyncMode:    SnapSync,
+	Ethash: ethash.Config{
+		CacheDir:         "ethash",
+		CachesInMem:      2,
+		CachesOnDisk:     3,
+		CachesLockMmap:   false,
+		DatasetsInMem:    1,
+		DatasetsOnDisk:   2,
+		DatasetsLockMmap: false,
+	},
 	NetworkId:            0, // enable auto configuration of networkID == chainID
 	TxLookupLimit:        2350000,
 	TransactionHistory:   2350000,
@@ -74,6 +85,27 @@ var Defaults = Config{
 	TxSyncMaxTimeout:     1 * time.Minute,
 }
 
+func init() {
+	home := os.Getenv("HOME")
+	if home == "" {
+		if user, err := user.Current(); err == nil {
+			home = user.HomeDir
+		}
+	}
+	if runtime.GOOS == "darwin" {
+		Defaults.Ethash.DatasetDir = filepath.Join(home, "Library", "Ethash")
+	} else if runtime.GOOS == "windows" {
+		localappdata := os.Getenv("LOCALAPPDATA")
+		if localappdata != "" {
+			Defaults.Ethash.DatasetDir = filepath.Join(localappdata, "Ethash")
+		} else {
+			Defaults.Ethash.DatasetDir = filepath.Join(home, "AppData", "Local", "Ethash")
+		}
+	} else {
+		Defaults.Ethash.DatasetDir = filepath.Join(home, ".ethash")
+	}
+}
+
 //go:generate go run github.com/fjl/gencodec -type Config -formats toml -out gen_config.go
 
 // Config contains configuration options for ETH and LES protocols.
@@ -86,6 +118,9 @@ type Config struct {
 	// zero, the chain ID is used as network ID.
 	NetworkId uint64
 	SyncMode  SyncMode
+
+	// Ethash options
+	Ethash ethash.Config
 
 	// HistoryMode configures chain history retention.
 	HistoryMode history.HistoryMode
@@ -195,13 +230,16 @@ type Config struct {
 // Clique is allowed for now to live standalone, but ethash is forbidden and can
 // only exist on already merged networks.
 func CreateConsensusEngine(config *params.ChainConfig, db ethdb.Database) (consensus.Engine, error) {
-	if config.TerminalTotalDifficulty == nil {
-		log.Error("Geth only supports PoS networks. Please transition legacy networks using Geth v1.13.x.")
-		return nil, errors.New("'terminalTotalDifficulty' is not set in genesis block")
-	}
-	// Wrap previously supported consensus engines into their post-merge counterpart
 	if config.Clique != nil {
-		return beacon.New(clique.New(config.Clique, db)), nil
+		return clique.New(config.Clique, db), nil
 	}
-	return beacon.New(ethash.NewFaker()), nil
+	powcfg := Defaults.Ethash
+	if powcfg.CacheDir == "" {
+		powcfg.CacheDir = "ethash"
+	}
+	if powcfg.DatasetsInMem == 0 {
+		powcfg.DatasetsInMem = 1
+	}
+	powcfg.PowMode = ethash.ModeNormal
+	return ethash.New(powcfg, nil, false), nil
 }
