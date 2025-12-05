@@ -32,9 +32,9 @@ type StateDB interface {
 	CreateAccount(common.Address)
 	CreateContract(common.Address)
 
-	SubBalance(common.Address, *uint256.Int, tracing.BalanceChangeReason) uint256.Int
-	AddBalance(common.Address, *uint256.Int, tracing.BalanceChangeReason) uint256.Int
-	GetBalance(common.Address) *uint256.Int
+	SubBalance(common.Address, *uint256.Int, tracing.BalanceChangeReason, uint64) uint256.Int
+	AddBalance(common.Address, *uint256.Int, tracing.BalanceChangeReason, uint64) uint256.Int
+	GetBalance(common.Address, uint64) *uint256.Int
 
 	GetNonce(common.Address) uint64
 	SetNonce(common.Address, uint64, tracing.NonceChangeReason)

@@ -53,8 +53,8 @@ func (s *hookedStateDB) CreateContract(addr common.Address) {
 	s.inner.CreateContract(addr)
 }
 
-func (s *hookedStateDB) GetBalance(addr common.Address) *uint256.Int {
-	return s.inner.GetBalance(addr)
+func (s *hookedStateDB) GetBalance(addr common.Address, blockNumber uint64) *uint256.Int {
+	return s.inner.GetBalance(addr, blockNumber)
 }
 
 func (s *hookedStateDB) GetNonce(addr common.Address) uint64 {
@@ -161,8 +161,8 @@ func (s *hookedStateDB) AccessEvents() *AccessEvents {
 	return s.inner.AccessEvents()
 }
 
-func (s *hookedStateDB) SubBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) uint256.Int {
-	prev := s.inner.SubBalance(addr, amount, reason)
+func (s *hookedStateDB) SubBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason, blockNumber uint64) uint256.Int {
+	prev := s.inner.SubBalance(addr, amount, reason, blockNumber)
 	if s.hooks.OnBalanceChange != nil && !amount.IsZero() {
 		newBalance := new(uint256.Int).Sub(&prev, amount)
 		s.hooks.OnBalanceChange(addr, prev.ToBig(), newBalance.ToBig(), reason)
@@ -170,8 +170,8 @@ func (s *hookedStateDB) SubBalance(addr common.Address, amount *uint256.Int, rea
 	return prev
 }
 
-func (s *hookedStateDB) AddBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) uint256.Int {
-	prev := s.inner.AddBalance(addr, amount, reason)
+func (s *hookedStateDB) AddBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason, blockNumber uint64) uint256.Int {
+	prev := s.inner.AddBalance(addr, amount, reason, blockNumber)
 	if s.hooks.OnBalanceChange != nil && !amount.IsZero() {
 		newBalance := new(uint256.Int).Add(&prev, amount)
 		s.hooks.OnBalanceChange(addr, prev.ToBig(), newBalance.ToBig(), reason)

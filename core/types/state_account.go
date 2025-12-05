@@ -33,6 +33,8 @@ type StateAccount struct {
 	Balance  *uint256.Int
 	Root     common.Hash // merkle root of the storage trie
 	CodeHash []byte
+
+	LastDemurrageBlock uint64 // block number when this account balance was last updated for decay
 }
 
 // NewEmptyStateAccount constructs an empty state account.
@@ -51,10 +53,11 @@ func (acct *StateAccount) Copy() *StateAccount {
 		balance = new(uint256.Int).Set(acct.Balance)
 	}
 	return &StateAccount{
-		Nonce:    acct.Nonce,
-		Balance:  balance,
-		Root:     acct.Root,
-		CodeHash: common.CopyBytes(acct.CodeHash),
+		Nonce:              acct.Nonce,
+		Balance:            balance,
+		Root:               acct.Root,
+		LastDemurrageBlock: acct.LastDemurrageBlock,
+		CodeHash:           common.CopyBytes(acct.CodeHash),
 	}
 }
 
@@ -62,17 +65,19 @@ func (acct *StateAccount) Copy() *StateAccount {
 // with a byte slice. This format can be used to represent full-consensus format
 // or slim format which replaces the empty root and code hash as nil byte slice.
 type SlimAccount struct {
-	Nonce    uint64
-	Balance  *uint256.Int
-	Root     []byte // Nil if root equals to types.EmptyRootHash
-	CodeHash []byte // Nil if hash equals to types.EmptyCodeHash
+	Nonce              uint64
+	Balance            *uint256.Int
+	Root               []byte // Nil if root equals to types.EmptyRootHash
+	CodeHash           []byte // Nil if hash equals to types.EmptyCodeHash
+	LastDemurrageBlock uint64
 }
 
 // SlimAccountRLP encodes the state account in 'slim RLP' format.
 func SlimAccountRLP(account StateAccount) []byte {
 	slim := SlimAccount{
-		Nonce:   account.Nonce,
-		Balance: account.Balance,
+		Nonce:              account.Nonce,
+		Balance:            account.Balance,
+		LastDemurrageBlock: account.LastDemurrageBlock,
 	}
 	if account.Root != EmptyRootHash {
 		slim.Root = account.Root[:]
@@ -96,6 +101,7 @@ func FullAccount(data []byte) (*StateAccount, error) {
 	}
 	var account StateAccount
 	account.Nonce, account.Balance = slim.Nonce, slim.Balance
+	account.LastDemurrageBlock = slim.LastDemurrageBlock
 
 	// Interpret the storage root and code hash in slim format.
 	if len(slim.Root) == 0 {

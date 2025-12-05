@@ -167,7 +167,7 @@ func (b *BlockGen) AddTxWithVMConfig(tx *types.Transaction, config vm.Config) {
 
 // GetBalance returns the balance of the given address at the generated block.
 func (b *BlockGen) GetBalance(addr common.Address) *uint256.Int {
-	return b.statedb.GetBalance(addr)
+	return b.statedb.GetBalance(addr, b.header.Number.Uint64())
 }
 
 // AddUncheckedTx forcefully adds a transaction to the block without any validation.
@@ -386,7 +386,7 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 			}
 		}
 		if config.DAOForkSupport && config.DAOForkBlock != nil && config.DAOForkBlock.Cmp(b.header.Number) == 0 {
-			misc.ApplyDAOHardFork(statedb)
+			misc.ApplyDAOHardFork(statedb, 0)
 		}
 
 		if config.IsPrague(b.header.Number, b.header.Time) || config.IsVerkle(b.header.Number, b.header.Time) {
