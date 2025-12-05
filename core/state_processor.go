@@ -76,7 +76,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 
 	// Mutate the block and state according to any hard-fork specs
 	if config.DAOForkSupport && config.DAOForkBlock != nil && config.DAOForkBlock.Cmp(block.Number()) == 0 {
-		misc.ApplyDAOHardFork(tracingStateDB)
+		misc.ApplyDAOHardFork(tracingStateDB, block.Number().Uint64())
 	}
 	var (
 		context vm.BlockContext

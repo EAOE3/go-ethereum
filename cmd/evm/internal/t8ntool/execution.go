@@ -132,6 +132,8 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig, 
 	// Capture errors for BLOCKHASH operation, if we haven't been supplied the
 	// required blockhashes
 	var hashError error
+	BlockNumber := pre.Env.Number
+
 	getHash := func(num uint64) common.Hash {
 		if pre.Env.BlockHashes == nil {
 			hashError = fmt.Errorf("getHash(%d) invoked, no blockhashes provided", num)
@@ -209,7 +211,7 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig, 
 	if chainConfig.DAOForkSupport &&
 		chainConfig.DAOForkBlock != nil &&
 		chainConfig.DAOForkBlock.Cmp(new(big.Int).SetUint64(pre.Env.Number)) == 0 {
-		misc.ApplyDAOHardFork(statedb)
+		misc.ApplyDAOHardFork(statedb, BlockNumber)
 	}
 	evm := vm.NewEVM(vmContext, statedb, chainConfig, vmConfig)
 	if beaconRoot := pre.Env.ParentBeaconBlockRoot; beaconRoot != nil {
@@ -295,15 +297,15 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig, 
 			reward.Sub(reward, new(big.Int).SetUint64(ommer.Delta))
 			reward.Mul(reward, blockReward)
 			reward.Rsh(reward, 3)
-			statedb.AddBalance(ommer.Address, uint256.MustFromBig(reward), tracing.BalanceIncreaseRewardMineUncle)
+			statedb.AddBalance(ommer.Address, uint256.MustFromBig(reward), tracing.BalanceIncreaseRewardMineUncle, BlockNumber)
 		}
-		statedb.AddBalance(pre.Env.Coinbase, uint256.MustFromBig(minerReward), tracing.BalanceIncreaseRewardMineBlock)
+		statedb.AddBalance(pre.Env.Coinbase, uint256.MustFromBig(minerReward), tracing.BalanceIncreaseRewardMineBlock, BlockNumber)
 	}
 	// Apply withdrawals
 	for _, w := range pre.Env.Withdrawals {
 		// Amount is in gwei, turn into wei
 		amount := new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(params.GWei))
-		statedb.AddBalance(w.Address, uint256.MustFromBig(amount), tracing.BalanceIncreaseWithdrawal)
+		statedb.AddBalance(w.Address, uint256.MustFromBig(amount), tracing.BalanceIncreaseWithdrawal, BlockNumber)
 
 		if isEIP4762 {
 			statedb.AccessEvents().AddAccount(w.Address, true, stdmath.MaxUint64)

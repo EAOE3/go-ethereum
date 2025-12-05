@@ -264,6 +264,7 @@ func (st *stateTransition) to() common.Address {
 }
 
 func (st *stateTransition) buyGas() error {
+	blockNumber := st.evm.Context.BlockNumber.Uint64()
 	mgval := new(big.Int).SetUint64(st.msg.GasLimit)
 	mgval.Mul(mgval, st.msg.GasPrice)
 	balanceCheck := new(big.Int).Set(mgval)
@@ -289,7 +290,7 @@ func (st *stateTransition) buyGas() error {
 	if overflow {
 		return fmt.Errorf("%w: address %v required balance exceeds 256 bits", ErrInsufficientFunds, st.msg.From.Hex())
 	}
-	if have, want := st.state.GetBalance(st.msg.From), balanceCheckU256; have.Cmp(want) < 0 {
+	if have, want := st.state.GetBalance(st.msg.From, blockNumber), balanceCheckU256; have.Cmp(want) < 0 {
 		return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.msg.From.Hex(), have, want)
 	}
 	if err := st.gp.SubGas(st.msg.GasLimit); err != nil {
@@ -303,7 +304,7 @@ func (st *stateTransition) buyGas() error {
 
 	st.initialGas = st.msg.GasLimit
 	mgvalU256, _ := uint256.FromBig(mgval)
-	st.state.SubBalance(st.msg.From, mgvalU256, tracing.BalanceDecreaseGasBuy)
+	st.state.SubBalance(st.msg.From, mgvalU256, tracing.BalanceDecreaseGasBuy, blockNumber)
 	return nil
 }
 
@@ -434,6 +435,7 @@ func (st *stateTransition) execute() (*ExecutionResult, error) {
 	if err := st.preCheck(); err != nil {
 		return nil, err
 	}
+	blockNumber := st.evm.Context.BlockNumber.Uint64()
 
 	var (
 		msg              = st.msg
@@ -557,7 +559,7 @@ func (st *stateTransition) execute() (*ExecutionResult, error) {
 	} else {
 		fee := new(uint256.Int).SetUint64(st.gasUsed())
 		fee.Mul(fee, effectiveTipU256)
-		st.state.AddBalance(st.evm.Context.Coinbase, fee, tracing.BalanceIncreaseRewardTransactionFee)
+		st.state.AddBalance(st.evm.Context.Coinbase, fee, tracing.BalanceIncreaseRewardTransactionFee, blockNumber)
 
 		// add the coinbase to the witness iff the fee is greater than 0
 		if rules.IsEIP4762 && fee.Sign() != 0 {
@@ -655,7 +657,8 @@ func (st *stateTransition) calcRefund() uint64 {
 func (st *stateTransition) returnGas() {
 	remaining := uint256.NewInt(st.gasRemaining)
 	remaining.Mul(remaining, uint256.MustFromBig(st.msg.GasPrice))
-	st.state.AddBalance(st.msg.From, remaining, tracing.BalanceIncreaseGasReturn)
+	blockNumber := st.evm.Context.BlockNumber.Uint64()
+	st.state.AddBalance(st.msg.From, remaining, tracing.BalanceIncreaseGasReturn, blockNumber)
 
 	if st.evm.Config.Tracer != nil && st.evm.Config.Tracer.OnGasChange != nil && st.gasRemaining > 0 {
 		st.evm.Config.Tracer.OnGasChange(st.gasRemaining, 0, tracing.GasChangeTxLeftOverReturned)
