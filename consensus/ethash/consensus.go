@@ -569,6 +569,7 @@ func (ethash *Ethash) SealHash(header *types.Header) (hash common.Hash) {
 // included uncles. The coinbase of each uncle block is also rewarded.
 func accumulateRewards(config *params.ChainConfig, stateDB vm.StateDB, header *types.Header, uncles []*types.Header) {
 	// Select the correct block reward based on chain progression
+	blockNumber := header.Number.Uint64()
 	blockReward := FrontierBlockReward
 	if config.IsByzantium(header.Number) {
 		blockReward = ByzantiumBlockReward
@@ -586,10 +587,10 @@ func accumulateRewards(config *params.ChainConfig, stateDB vm.StateDB, header *t
 		r.Sub(r, hNum)
 		r.Mul(r, blockReward)
 		r.Rsh(r, 3)
-		stateDB.AddBalance(uncle.Coinbase, r, tracing.BalanceIncreaseRewardMineUncle)
+		stateDB.AddBalance(uncle.Coinbase, r, tracing.BalanceIncreaseRewardMineUncle, blockNumber)
 
 		r.Rsh(blockReward, 5)
 		reward.Add(reward, r)
 	}
-	stateDB.AddBalance(header.Coinbase, reward, tracing.BalanceIncreaseRewardMineBlock)
+	stateDB.AddBalance(header.Coinbase, reward, tracing.BalanceIncreaseRewardMineBlock, blockNumber)
 }

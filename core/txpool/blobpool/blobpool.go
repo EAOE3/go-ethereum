@@ -558,6 +558,7 @@ func (p *BlobPool) parseTransaction(id uint64, size uint32, blob []byte) error {
 // that does not fit anymore (dangling or filled nonce, overdraft).
 func (p *BlobPool) recheck(addr common.Address, inclusions map[common.Hash]uint64) {
 	// Sort the transactions belonging to the account so reinjects can be simpler
+	blockNumber := p.head.Load().Number.Uint64()
 	txs := p.index[addr]
 	if inclusions != nil && txs == nil { // during reorgs, we might find new accounts
 		return
@@ -720,7 +721,7 @@ func (p *BlobPool) recheck(addr common.Address, inclusions map[common.Hash]uint6
 	// Ensure that there's no over-draft, this is expected to happen when some
 	// transactions get included without publishing on the network
 	var (
-		balance = p.state.GetBalance(addr)
+		balance = p.state.GetBalance(addr, blockNumber)
 		spent   = p.spent[addr]
 	)
 	if spent.Cmp(balance) > 0 {
@@ -1365,6 +1366,7 @@ func (p *BlobPool) checkDelegationLimit(tx *types.Transaction) error {
 // only runs the stateful checks with lock protection.
 func (p *BlobPool) validateTx(tx *types.Transaction) error {
 	// Ensure the transaction adheres to the stateful pool filters (nonce, balance)
+
 	stateOpts := &txpool.ValidationOptionsWithState{
 		State: p.state,
 
@@ -1395,9 +1397,12 @@ func (p *BlobPool) validateTx(tx *types.Transaction) error {
 			return nil
 		},
 	}
-	if err := txpool.ValidateTransactionWithState(tx, p.signer, stateOpts); err != nil {
+
+	blockNumber := p.head.Load().Number.Uint64()
+	if err := txpool.ValidateTransactionWithState(tx, p.signer, stateOpts, blockNumber); err != nil {
 		return err
 	}
+
 	if err := p.checkDelegationLimit(tx); err != nil {
 		return err
 	}

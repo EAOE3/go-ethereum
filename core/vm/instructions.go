@@ -252,7 +252,7 @@ func opAddress(pc *uint64, evm *EVM, scope *ScopeContext) ([]byte, error) {
 func opBalance(pc *uint64, evm *EVM, scope *ScopeContext) ([]byte, error) {
 	slot := scope.Stack.peek()
 	address := common.Address(slot.Bytes20())
-	slot.Set(evm.StateDB.GetBalance(address))
+	slot.Set(evm.StateDB.GetBalance(address, evm.Context.BlockNumber.Uint64()))
 	return nil, nil
 }
 
@@ -671,7 +671,7 @@ func opCreate(pc *uint64, evm *EVM, scope *ScopeContext) ([]byte, error) {
 
 	scope.Contract.UseGas(gas, evm.Config.Tracer, tracing.GasChangeCallContractCreation)
 
-	res, addr, returnGas, suberr := evm.Create(scope.Contract.Address(), input, gas, &value)
+	res, addr, returnGas, suberr := evm.Create(scope.Contract.Address(), input, gas, &value, evm.Context.BlockNumber.Uint64())
 	// Push item on the stack based on the returned error. If the ruleset is
 	// homestead we must check for CodeStoreOutOfGasError (homestead only
 	// rule) and treat as an error, if the ruleset is frontier we must
@@ -713,7 +713,7 @@ func opCreate2(pc *uint64, evm *EVM, scope *ScopeContext) ([]byte, error) {
 	// reuse size int for stackvalue
 	stackvalue := size
 	res, addr, returnGas, suberr := evm.Create2(scope.Contract.Address(), input, gas,
-		&endowment, &salt)
+		&endowment, &salt, evm.Context.BlockNumber.Uint64())
 	// Push item on the stack based on the returned error.
 	if suberr != nil {
 		stackvalue.Clear()
@@ -749,7 +749,7 @@ func opCall(pc *uint64, evm *EVM, scope *ScopeContext) ([]byte, error) {
 	if !value.IsZero() {
 		gas += params.CallStipend
 	}
-	ret, returnGas, err := evm.Call(scope.Contract.Address(), toAddr, args, gas, &value)
+	ret, returnGas, err := evm.Call(scope.Contract.Address(), toAddr, args, gas, &value, evm.Context.BlockNumber.Uint64())
 
 	if err != nil {
 		temp.Clear()
@@ -783,7 +783,7 @@ func opCallCode(pc *uint64, evm *EVM, scope *ScopeContext) ([]byte, error) {
 		gas += params.CallStipend
 	}
 
-	ret, returnGas, err := evm.CallCode(scope.Contract.Address(), toAddr, args, gas, &value)
+	ret, returnGas, err := evm.CallCode(scope.Contract.Address(), toAddr, args, gas, &value, evm.Context.BlockNumber.Uint64())
 	if err != nil {
 		temp.Clear()
 	} else {
@@ -841,7 +841,7 @@ func opStaticCall(pc *uint64, evm *EVM, scope *ScopeContext) ([]byte, error) {
 	// Get arguments from the memory.
 	args := scope.Memory.GetPtr(inOffset.Uint64(), inSize.Uint64())
 
-	ret, returnGas, err := evm.StaticCall(scope.Contract.Address(), toAddr, args, gas)
+	ret, returnGas, err := evm.StaticCall(scope.Contract.Address(), toAddr, args, gas, evm.Context.BlockNumber.Uint64())
 	if err != nil {
 		temp.Clear()
 	} else {
@@ -886,8 +886,9 @@ func opSelfdestruct(pc *uint64, evm *EVM, scope *ScopeContext) ([]byte, error) {
 		return nil, ErrWriteProtection
 	}
 	beneficiary := scope.Stack.pop()
-	balance := evm.StateDB.GetBalance(scope.Contract.Address())
-	evm.StateDB.AddBalance(beneficiary.Bytes20(), balance, tracing.BalanceIncreaseSelfdestruct)
+	blockNumber := evm.Context.BlockNumber.Uint64()
+	balance := evm.StateDB.GetBalance(scope.Contract.Address(), blockNumber)
+	evm.StateDB.AddBalance(beneficiary.Bytes20(), balance, tracing.BalanceIncreaseSelfdestruct, blockNumber)
 	evm.StateDB.SelfDestruct(scope.Contract.Address())
 	if tracer := evm.Config.Tracer; tracer != nil {
 		if tracer.OnEnter != nil {
@@ -905,9 +906,10 @@ func opSelfdestruct6780(pc *uint64, evm *EVM, scope *ScopeContext) ([]byte, erro
 		return nil, ErrWriteProtection
 	}
 	beneficiary := scope.Stack.pop()
-	balance := evm.StateDB.GetBalance(scope.Contract.Address())
-	evm.StateDB.SubBalance(scope.Contract.Address(), balance, tracing.BalanceDecreaseSelfdestruct)
-	evm.StateDB.AddBalance(beneficiary.Bytes20(), balance, tracing.BalanceIncreaseSelfdestruct)
+	blockNumber := evm.Context.BlockNumber.Uint64()
+	balance := evm.StateDB.GetBalance(scope.Contract.Address(), blockNumber)
+	evm.StateDB.SubBalance(scope.Contract.Address(), balance, tracing.BalanceDecreaseSelfdestruct, blockNumber)
+	evm.StateDB.AddBalance(beneficiary.Bytes20(), balance, tracing.BalanceIncreaseSelfdestruct, blockNumber)
 	evm.StateDB.SelfDestruct6780(scope.Contract.Address())
 	if tracer := evm.Config.Tracer; tracer != nil {
 		if tracer.OnEnter != nil {

@@ -330,7 +330,7 @@ func (api *BlockChainAPI) GetBalance(ctx context.Context, address common.Address
 	if state == nil || err != nil {
 		return nil, err
 	}
-	b := state.GetBalance(address).ToBig()
+	b := state.GetBalance(address, uint64(blockNrOrHash.BlockNumber.Int64())).ToBig()
 	return (*hexutil.Big)(b), state.Error()
 }
 
@@ -429,7 +429,8 @@ func (api *BlockChainAPI) GetProof(ctx context.Context, address common.Address, 
 	if err := tr.Prove(crypto.Keccak256(address.Bytes()), &accountProof); err != nil {
 		return nil, err
 	}
-	balance := statedb.GetBalance(address).ToBig()
+	blockNumber := uint64(blockNrOrHash.BlockNumber.Int64())
+	balance := statedb.GetBalance(address, blockNumber).ToBig()
 	return &AccountResult{
 		Address:      address,
 		AccountProof: accountProof,

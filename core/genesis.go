@@ -151,7 +151,7 @@ func hashAlloc(ga *types.GenesisAlloc, isVerkle bool) (common.Hash, error) {
 	}
 	for addr, account := range *ga {
 		if account.Balance != nil {
-			statedb.AddBalance(addr, uint256.MustFromBig(account.Balance), tracing.BalanceIncreaseGenesisBalance)
+			statedb.AddBalance(addr, uint256.MustFromBig(account.Balance), tracing.BalanceIncreaseGenesisBalance, 0)
 		}
 		statedb.SetCode(addr, account.Code, tracing.CodeChangeGenesis)
 		statedb.SetNonce(addr, account.Nonce, tracing.NonceChangeGenesis)
@@ -177,7 +177,7 @@ func flushAlloc(ga *types.GenesisAlloc, triedb *triedb.Database) (common.Hash, e
 		if account.Balance != nil {
 			// This is not actually logged via tracer because OnGenesisBlock
 			// already captures the allocations.
-			statedb.AddBalance(addr, uint256.MustFromBig(account.Balance), tracing.BalanceIncreaseGenesisBalance)
+			statedb.AddBalance(addr, uint256.MustFromBig(account.Balance), tracing.BalanceIncreaseGenesisBalance, 0)
 		}
 		statedb.SetCode(addr, account.Code, tracing.CodeChangeGenesis)
 		statedb.SetNonce(addr, account.Nonce, tracing.NonceChangeGenesis)

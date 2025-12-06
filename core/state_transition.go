@@ -480,7 +480,7 @@ func (st *stateTransition) execute() (*ExecutionResult, error) {
 	if overflow {
 		return nil, fmt.Errorf("%w: address %v", ErrInsufficientFundsForTransfer, msg.From.Hex())
 	}
-	if !value.IsZero() && !st.evm.Context.CanTransfer(st.state, msg.From, value) {
+	if !value.IsZero() && !st.evm.Context.CanTransfer(st.state, msg.From, value, blockNumber) {
 		return nil, fmt.Errorf("%w: address %v", ErrInsufficientFundsForTransfer, msg.From.Hex())
 	}
 
@@ -499,7 +499,7 @@ func (st *stateTransition) execute() (*ExecutionResult, error) {
 		vmerr error // vm errors do not effect consensus and are therefore not assigned to err
 	)
 	if contractCreation {
-		ret, _, st.gasRemaining, vmerr = st.evm.Create(msg.From, msg.Data, st.gasRemaining, value)
+		ret, _, st.gasRemaining, vmerr = st.evm.Create(msg.From, msg.Data, st.gasRemaining, value, blockNumber)
 	} else {
 		// Increment the nonce for the next transaction.
 		st.state.SetNonce(msg.From, st.state.GetNonce(msg.From)+1, tracing.NonceChangeEoACall)
@@ -522,7 +522,7 @@ func (st *stateTransition) execute() (*ExecutionResult, error) {
 		}
 
 		// Execute the transaction's call.
-		ret, st.gasRemaining, vmerr = st.evm.Call(msg.From, st.to(), msg.Data, st.gasRemaining, value)
+		ret, st.gasRemaining, vmerr = st.evm.Call(msg.From, st.to(), msg.Data, st.gasRemaining, value, blockNumber)
 	}
 
 	// Record the gas used excluding gas refunds. This value represents the actual

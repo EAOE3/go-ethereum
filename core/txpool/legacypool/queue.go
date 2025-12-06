@@ -153,7 +153,7 @@ func (q *queue) add(tx *types.Transaction) (*common.Hash, error) {
 // - all transactions that were removed from the queue and selected for promotion;
 // - all other transactions that were removed from the queue and dropped;
 // - the list of addresses removed.
-func (q *queue) promoteExecutables(accounts []common.Address, gasLimit uint64, currentState *state.StateDB, nonces *noncer) ([]*types.Transaction, []common.Hash, []common.Address) {
+func (q *queue) promoteExecutables(accounts []common.Address, gasLimit uint64, currentState *state.StateDB, nonces *noncer, blockNumber uint64) ([]*types.Transaction, []common.Hash, []common.Address) {
 	// Track the promotable transactions to broadcast them at once
 	var (
 		promotable       []*types.Transaction
@@ -174,7 +174,7 @@ func (q *queue) promoteExecutables(accounts []common.Address, gasLimit uint64, c
 		log.Trace("Removing old queued transactions", "count", len(forwards))
 
 		// Drop all transactions that are too costly (low balance or out of gas)
-		drops, _ := list.Filter(currentState.GetBalance(addr), gasLimit)
+		drops, _ := list.Filter(currentState.GetBalance(addr, blockNumber), gasLimit)
 		for _, tx := range drops {
 			dropped = append(dropped, tx.Hash())
 		}

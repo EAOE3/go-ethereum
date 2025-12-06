@@ -50,6 +50,11 @@ const (
 )
 
 var (
+	// globalNodeStack stores the node instance for access by static functions
+	globalNodeStack *node.Node
+)
+
+var (
 	// flags that configure the node
 	nodeFlags = slices.Concat([]cli.Flag{
 		utils.IdentityFlag,
@@ -331,6 +336,7 @@ func geth(ctx *cli.Context) error {
 
 	prepare(ctx)
 	stack := makeFullNode(ctx)
+	globalNodeStack = stack // Store for static access
 	defer stack.Close()
 
 	startNode(ctx, stack, false)

@@ -121,7 +121,7 @@ func gasSelfdestructEIP4762(evm *EVM, contract *Contract, stack *Stack, mem *Mem
 		return wanted, nil
 	}
 	statelessGas := wanted
-	balanceIsZero := evm.StateDB.GetBalance(contractAddr).Sign() == 0
+	balanceIsZero := evm.StateDB.GetBalance(contractAddr, evm.Context.BlockNumber.Uint64()).Sign() == 0
 	_, isPrecompile := evm.precompile(beneficiaryAddr)
 	isSystemContract := beneficiaryAddr == params.HistoryStorageAddress
 

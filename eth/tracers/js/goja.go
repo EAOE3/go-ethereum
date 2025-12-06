@@ -753,6 +753,7 @@ func (do *dbObj) GetBalance(addrSlice goja.Value) goja.Value {
 		do.vm.Interrupt(err)
 		return nil
 	}
+
 	addr := common.BytesToAddress(a)
 	value := do.db.GetBalance(addr)
 	res, err := do.toBig(do.vm, value.String())

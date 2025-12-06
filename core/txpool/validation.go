@@ -236,7 +236,7 @@ type ValidationOptionsWithState struct {
 //
 // This check is public to allow different transaction pools to check the stateful
 // rules without duplicating code and running the risk of missed updates.
-func ValidateTransactionWithState(tx *types.Transaction, signer types.Signer, opts *ValidationOptionsWithState) error {
+func ValidateTransactionWithState(tx *types.Transaction, signer types.Signer, opts *ValidationOptionsWithState, blockNumber uint64) error {
 	// Ensure the transaction adheres to nonce ordering
 	from, err := types.Sender(signer, tx) // already validated (and cached), but cleaner to check
 	if err != nil {
@@ -256,7 +256,7 @@ func ValidateTransactionWithState(tx *types.Transaction, signer types.Signer, op
 	}
 	// Ensure the transactor has enough funds to cover the transaction costs
 	var (
-		balance = opts.State.GetBalance(from).ToBig()
+		balance = opts.State.GetBalance(from, blockNumber).ToBig()
 		cost    = tx.Cost()
 	)
 	if balance.Cmp(cost) < 0 {

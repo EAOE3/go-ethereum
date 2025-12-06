@@ -91,7 +91,7 @@ func enable1884(jt *JumpTable) {
 }
 
 func opSelfBalance(pc *uint64, evm *EVM, scope *ScopeContext) ([]byte, error) {
-	balance := evm.StateDB.GetBalance(scope.Contract.Address())
+	balance := evm.StateDB.GetBalance(scope.Contract.Address(), evm.Context.BlockNumber.Uint64())
 	scope.Stack.push(balance)
 	return nil, nil
 }

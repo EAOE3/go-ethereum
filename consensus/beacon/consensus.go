@@ -336,7 +336,7 @@ func (beacon *Beacon) Finalize(chain consensus.ChainHeaderReader, header *types.
 		// Convert amount from gwei to wei.
 		amount := new(uint256.Int).SetUint64(w.Amount)
 		amount = amount.Mul(amount, uint256.NewInt(params.GWei))
-		state.AddBalance(w.Address, amount, tracing.BalanceIncreaseWithdrawal)
+		state.AddBalance(w.Address, amount, tracing.BalanceIncreaseWithdrawal, header.Number.Uint64())
 	}
 	// No block reward which is issued by consensus layer instead.
 }

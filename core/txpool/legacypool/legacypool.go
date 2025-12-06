@@ -577,7 +577,8 @@ func (pool *LegacyPool) validateTx(tx *types.Transaction) error {
 			return nil
 		},
 	}
-	if err := txpool.ValidateTransactionWithState(tx, pool.signer, opts); err != nil {
+	blockNumber := pool.currentHead.Load().Number.Uint64()
+	if err := txpool.ValidateTransactionWithState(tx, pool.signer, opts, blockNumber); err != nil {
 		return err
 	}
 	return pool.validateAuth(tx)
@@ -1395,7 +1396,8 @@ func (pool *LegacyPool) reset(oldHead, newHead *types.Header) {
 // invalidated transactions (low nonce, low balance) are deleted.
 func (pool *LegacyPool) promoteExecutables(accounts []common.Address) []*types.Transaction {
 	gasLimit := pool.currentHead.Load().GasLimit
-	promotable, dropped, removedAddresses := pool.queue.promoteExecutables(accounts, gasLimit, pool.currentState, pool.pendingNonces)
+	blockNumber := pool.currentHead.Load().Number.Uint64()
+	promotable, dropped, removedAddresses := pool.queue.promoteExecutables(accounts, gasLimit, pool.currentState, pool.pendingNonces, blockNumber)
 
 	// promote all promotable transactions
 	promoted := make([]*types.Transaction, 0, len(promotable))
@@ -1543,7 +1545,8 @@ func (pool *LegacyPool) demoteUnexecutables() {
 			log.Trace("Removed old pending transaction", "hash", hash)
 		}
 		// Drop all transactions that are too costly (low balance or out of gas), and queue any invalids back for later
-		drops, invalids := list.Filter(pool.currentState.GetBalance(addr), gasLimit)
+		blockNumber := pool.currentHead.Load().Number.Uint64()
+		drops, invalids := list.Filter(pool.currentState.GetBalance(addr, blockNumber), gasLimit)
 		for _, tx := range drops {
 			hash := tx.Hash()
 			pool.all.Remove(hash)
